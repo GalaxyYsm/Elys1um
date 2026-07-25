@@ -1,0 +1,238 @@
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MM2FarmGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 240, 0, 190)
+mainFrame.Position = UDim2.new(0.5, -120, 0.5, -95)
+mainFrame.BackgroundColor3 = Color3.fromRGB(255, 179, 0)
+mainFrame.BackgroundTransparency = 0
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 14)
+uiCorner.Parent = mainFrame
+
+-- Top Bar
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 38)
+topBar.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+topBar.BorderSizePixel = 0
+topBar.Parent = mainFrame
+
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 14)
+topCorner.Parent = topBar
+
+-- Umbrella Icon
+local umbrella = Instance.new("ImageLabel")
+umbrella.Size = UDim2.new(0, 28, 0, 28)
+umbrella.Position = UDim2.new(0, 10, 0.5, -14)
+umbrella.BackgroundTransparency = 1
+umbrella.Image = "rbxassetid:6031097223"
+umbrella.Parent = topBar
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.65, 0, 1, 0)
+title.Position = UDim2.new(0, 48, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Mm2 Summer\nAuto Farm"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 15
+title.TextWrapped = true
+title.TextXAlignment = Enum.TextXAlignment.Center
+title.TextYAlignment = Enum.TextYAlignment.Center
+title.Font = Enum.Font.GothamBold
+title.Parent = topBar
+
+-- Close Button
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 28, 0, 28)
+closeBtn.Position = UDim2.new(1, -35, 0.5, -14)
+closeBtn.BackgroundColor3 = Color3.fromRGB(244, 67, 54)
+closeBtn.Text = "×"
+closeBtn.TextColor3 = Color3.new(1,1,1)
+closeBtn.TextScaled = true
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Parent = topBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = closeBtn
+
+-- Status
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(0.9, 0, 0, 26)
+statusLabel.Position = UDim2.new(0.05, 0, 0.28, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Status: Ready!"
+statusLabel.TextColor3 = Color3.new(1, 1, 1)
+statusLabel.TextScaled = true
+statusLabel.Font = Enum.Font.GothamSemibold
+statusLabel.Parent = mainFrame
+
+-- Speed
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0.9, 0, 0, 26)
+speedLabel.Position = UDim2.new(0.05, 0, 0.48, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "?? Speed: 50"
+speedLabel.TextColor3 = Color3.fromRGB(56, 168, 60)
+speedLabel.TextScaled = true
+speedLabel.Font = Enum.Font.GothamSemibold
+speedLabel.Parent = mainFrame
+
+-- START / STOP Button
+local startButton = Instance.new("TextButton")
+startButton.Size = UDim2.new(0.9, 0, 0, 42)
+startButton.Position = UDim2.new(0.05, 0, 0.65, 0)
+startButton.BackgroundColor3 = Color3.fromRGB(56, 168, 60)
+startButton.Text = "? START"
+startButton.TextColor3 = Color3.new(1, 1, 1)
+startButton.TextScaled = true
+startButton.Font = Enum.Font.GothamBold
+startButton.Parent = mainFrame
+
+local startCorner = Instance.new("UICorner")
+startCorner.CornerRadius = UDim.new(0, 12)
+startCorner.Parent = startButton
+
+-- Variables
+local isFarming = false
+local farmingConnection = nil
+
+-- Draggable
+local dragging
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        local dragStart = input.Position
+        local startPos = mainFrame.Position
+
+        local connection
+        connection = game:GetService("UserInputService").InputChanged:Connect(function(input2)
+            if dragging and (input2.UserInputType == Enum.UserInputType.MouseMovement or input2.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input2.Position - dragStart
+                mainFrame.Position = UDim2.new(
+                    startPos.X.Scale,
+                    startPos.X.Offset + delta.X,
+                    startPos.Y.Scale,
+                    startPos.Y.Offset + delta.Y
+                )
+            end
+        end)
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+                connection:Disconnect()
+            end
+        end)
+    end
+end)
+
+-- ==================== FARMING SCRIPT ====================
+local TweenService = game:GetService("TweenService")
+local LP = game.Players.LocalPlayer
+local Char = LP.Character or LP.CharacterAdded:Wait()
+local HRP = Char:WaitForChild("HumanoidRootPart")
+local Humanoid = Char:WaitForChild("Humanoid")
+
+local function GetMap()
+    while true do
+        for _, obj in ipairs(workspace:GetChildren()) do
+            if obj:GetAttribute("MapID") and obj:FindFirstChild("CoinContainer") then
+                return obj
+            end
+        end
+        task.wait()
+    end
+end
+
+local function getNearest()
+    local map = GetMap()
+    local closest, dist = nil, math.huge
+    for _, coin in ipairs(map.CoinContainer:GetChildren()) do
+        local v = coin:FindFirstChild("CoinVisual")
+        if v and not v:GetAttribute("Collected") then
+            local d = (HRP.Position - coin.Position).Magnitude
+            if d < dist then
+                closest = coin
+                dist = d
+            end
+        end
+    end
+    return closest
+end
+
+local function tp(hp)
+    Humanoid:ChangeState(11)
+    local d = (HRP.Position - hp.Position).Magnitude
+    local t = TweenService:Create(HRP, TweenInfo.new(d / 25, Enum.EasingStyle.Linear), {CFrame = hp.CFrame})
+    t:Play()
+    t.Completed:Wait()
+end
+
+local function startFarming()
+    if farmingConnection then return end
+
+    farmingConnection = task.spawn(function()
+        while isFarming do
+            local target = getNearest()
+            if target and LP:GetAttribute("Alive") then
+                tp(target)
+                local v = target:FindFirstChild("CoinVisual")
+                while v and not v:GetAttribute("Collected") and v.Parent and isFarming do
+                    if not LP:GetAttribute("Alive") then break end
+                    local n = getNearest()
+                    if n and n ~= target then break end
+                    task.wait()
+                end
+            else
+                task.wait(0.5)
+            end
+        end
+    end)
+end
+
+local function stopFarming()
+    isFarming = false
+    if farmingConnection then
+        farmingConnection = nil
+    end
+end
+
+-- Toggle Function
+local function toggleFarming()
+    isFarming = not isFarming
+
+    if isFarming then
+        startButton.Text = "? STOP"
+        startButton.BackgroundColor3 = Color3.fromRGB(244, 67, 54)
+        statusLabel.Text = "Status: Farming..."
+        startFarming()
+        print("MM2 Farm Started!")
+    else
+        startButton.Text = "? START"
+        startButton.BackgroundColor3 = Color3.fromRGB(56, 168, 60)
+        statusLabel.Text = "Status: Stopped"
+        stopFarming()
+        print("MM2 Farm Stopped!")
+    end
+end
+
+-- Button Connections
+closeBtn.MouseButton1Click:Connect(function()
+    stopFarming()
+    screenGui:Destroy()
+end)
+
+startButton.MouseButton1Click:Connect(toggleFarming)
